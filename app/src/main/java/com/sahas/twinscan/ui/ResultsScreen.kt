@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -63,6 +64,9 @@ import com.sahas.twinscan.data.MediaItem
 import com.sahas.twinscan.ui.theme.TwinScanTheme
 import java.text.DateFormat
 import java.util.Date
+
+/** Summary card and quick-select row that sit above the duplicate groups in the list. */
+private const val RESULT_HEADER_ITEMS = 2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,22 +120,35 @@ fun ResultsScreen(
                 Button(onClick = viewModel::backToPicker) { Text("Scan other folders") }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item(key = "summary") { SummaryCard(state, context) }
-                item(key = "quick") { QuickSelect(state, viewModel) }
-                items(state.groups, key = { it.hash }) { group ->
-                    GroupCard(
-                        group = group,
-                        selected = state.selectedForDelete,
-                        onToggle = { viewModel.toggleItem(it.uri) },
-                        onOpen = { openItem(context, it) },
-                        modifier = Modifier.animateItem(),
-                    )
+            val listState = rememberLazyListState()
+            val groupCount = state.groups.size
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(key = "summary") { SummaryCard(state, context) }
+                    item(key = "quick") { QuickSelect(state, viewModel) }
+                    items(state.groups, key = { it.hash }) { group ->
+                        GroupCard(
+                            group = group,
+                            selected = state.selectedForDelete,
+                            onToggle = { viewModel.toggleItem(it.uri) },
+                            onOpen = { openItem(context, it) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
                 }
+                FastScrollbar(
+                    state = listState,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(vertical = 8.dp),
+                    // The two header rows come before the first group.
+                    label = { index ->
+                        "Group ${(index - RESULT_HEADER_ITEMS + 1).coerceIn(1, groupCount)} of $groupCount"
+                    },
+                )
             }
         }
     }
