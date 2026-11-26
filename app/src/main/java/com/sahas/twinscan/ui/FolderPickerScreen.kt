@@ -5,6 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
@@ -128,64 +130,87 @@ fun FolderPickerScreen(
                 TextButton(onClick = { viewModel.loadIndex(force = true) }) { Text("Check again") }
             }
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (partialAccess) {
-                    item(key = "partial") { PartialAccessCard(onManageAccess) }
-                }
-                // Shown for the whole time at the top level: removing it on first selection
-                // would shift every row under the user's finger.
-                if (atRoot) {
-                    item(key = "intro") { IntroCard() }
-                }
-                item(key = "options") { ScanOptions(state, viewModel) }
-
+            else -> Box(Modifier.fillMaxSize().padding(padding)) {
+                // A fresh scroll position per folder, so opening one always starts at its top.
+                val listState = remember(current.path) { LazyListState() }
                 val selfCount = if (state.includeSubfolders) current.totalCount else current.directCount
-                if (selfCount > 0) {
-                    item(key = "self") {
-                        val label = folderLabel(current.path, current.name)
+                // Rows that come before the first subfolder; the scrollbar label needs to skip them.
+                val headerItems = listOf(
+                    partialAccess,
+                    atRoot,
+                    true, // options
+                    selfCount > 0,
+                    current.children.isNotEmpty(),
+                ).count { it }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (partialAccess) {
+                        item(key = "partial") { PartialAccessCard(onManageAccess) }
+                    }
+                    // Shown for the whole time at the top level: removing it on first selection
+                    // would shift every row under the user's finger.
+                    if (atRoot) {
+                        item(key = "intro") { IntroCard() }
+                    }
+                    item(key = "options") { ScanOptions(state, viewModel) }
+
+                    if (selfCount > 0) {
+                        item(key = "self") {
+                            val label = folderLabel(current.path, current.name)
+                            FolderCard(
+                                icon = R.drawable.ic_folder,
+                                title = if (state.includeSubfolders) "Everything in $label" else "Files directly in $label",
+                                subtitle = plural(selfCount, "file"),
+                                note = coveredNote(state, current.path),
+                                selected = isChecked(state, current.path),
+                                enabled = !isCoveredByAncestor(state, current.path),
+                                highlighted = true,
+                                onToggle = { viewModel.toggleFolder(current.path) },
+                                onOpen = null,
+                            )
+                        }
+                    }
+
+                    if (current.children.isNotEmpty()) {
+                        item(key = "header") {
+                            Text(
+                                text = "Folders",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp),
+                            )
+                        }
+                    }
+                    items(current.children, key = { it.path }) { child ->
                         FolderCard(
                             icon = R.drawable.ic_folder,
-                            title = if (state.includeSubfolders) "Everything in $label" else "Files directly in $label",
-                            subtitle = plural(selfCount, "file"),
-                            note = coveredNote(state, current.path),
-                            selected = isChecked(state, current.path),
-                            enabled = !isCoveredByAncestor(state, current.path),
-                            highlighted = true,
-                            onToggle = { viewModel.toggleFolder(current.path) },
-                            onOpen = null,
+                            title = child.name,
+                            subtitle = folderSubtitle(state, child),
+                            note = coveredNote(state, child.path) ?: selectedInsideNote(state, child.path),
+                            selected = isChecked(state, child.path),
+                            enabled = !isCoveredByAncestor(state, child.path),
+                            highlighted = false,
+                            onToggle = { viewModel.toggleFolder(child.path) },
+                            onOpen = if (child.children.isNotEmpty()) {
+                                { viewModel.openFolder(child.path) }
+                            } else null,
                         )
                     }
                 }
-
-                if (current.children.isNotEmpty()) {
-                    item(key = "header") {
-                        Text(
-                            text = "Folders",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp),
-                        )
-                    }
-                }
-                items(current.children, key = { it.path }) { child ->
-                    FolderCard(
-                        icon = R.drawable.ic_folder,
-                        title = child.name,
-                        subtitle = folderSubtitle(state, child),
-                        note = coveredNote(state, child.path) ?: selectedInsideNote(state, child.path),
-                        selected = isChecked(state, child.path),
-                        enabled = !isCoveredByAncestor(state, child.path),
-                        highlighted = false,
-                        onToggle = { viewModel.toggleFolder(child.path) },
-                        onOpen = if (child.children.isNotEmpty()) {
-                            { viewModel.openFolder(child.path) }
-                        } else null,
-                    )
-                }
+                FastScrollbar(
+                    state = listState,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(vertical = 8.dp),
+                    // Folders are sorted by name, so the first letter works as an index.
+                    label = { index ->
+                        current.children.getOrNull((index - headerItems).coerceAtLeast(0))
+                            ?.name?.firstOrNull()?.uppercase()
+                    },
+                )
             }
         }
     }
