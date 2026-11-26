@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-colour version for Android 13+ themed icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The twin being examined -->
+    <path
+        android:fillAlpha="0.5"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M42,32a15,15 0,1 0,0 30a15,15 0,1 0,0 -30z" />
+    <!-- Lens glass -->
+    <path
+        android:fillAlpha="0.28"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M58,42a11,11 0,1 0,0 22a11,11 0,1 0,0 -22z" />
+    <!-- Lens rim -->
+    <path
+        android:pathData="M58,39.5a13.5,13.5 0,1 0,0 27a13.5,13.5 0,1 0,0 -27z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5" />
+    <!-- Handle -->
+    <path
+        android:pathData="M68.5,63.5L78,73"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="6" />
+</vector>
