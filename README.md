@@ -84,3 +84,7 @@ app/src/main/java/com/sahas/twinscan/
 ├── ScanViewModel.kt App state, scan and delete flow
 └── MainActivity.kt
 ```
+
+## License
+
+Released under the [MIT License](LICENSE).
