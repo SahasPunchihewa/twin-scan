@@ -27,6 +27,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -135,7 +136,9 @@ fun FolderPickerScreen(
                 if (partialAccess) {
                     item(key = "partial") { PartialAccessCard(onManageAccess) }
                 }
-                if (atRoot && state.selectedFolders.isEmpty()) {
+                // Shown for the whole time at the top level: removing it on first selection
+                // would shift every row under the user's finger.
+                if (atRoot) {
                     item(key = "intro") { IntroCard() }
                 }
                 item(key = "options") { ScanOptions(state, viewModel) }
@@ -300,7 +303,14 @@ private fun FolderCard(
                 }
             }
             if (onOpen != null) {
-                FilledTonalIconButton(onClick = onOpen) {
+                FilledTonalIconButton(
+                    onClick = onOpen,
+                    // The default tonal colour equals a selected card's colour, so lift it then.
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (selected) colors.surface else colors.secondaryContainer,
+                        contentColor = if (selected) colors.onSurface else colors.onSecondaryContainer,
+                    ),
+                ) {
                     Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = "Open $title")
                 }
             } else {
